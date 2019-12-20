@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="com.jianbinggouzi.Domain">
+	<class name="EntityBaseDomain" table="t_entity" abstract="true">
+		<id name="entityId">
+			<generator class="uuid.hex"/>
+		</id>
+		<union-subclass name="User" table="t_user">
+			<property name="userName"></property>
+			<property name="passWord"></property>
+			<property name="userPhone"></property>
+			<property name="userType"></property>
+			<property name="lockStatus"></property>
+			<property name="userCredit"></property>
+		</union-subclass>
+		<union-subclass name="UserToken" table="t_userToken">
+			<many-to-one name="user" class="User"></many-to-one>
+			<property name="createTime"></property>
+			<property name="liveMinutes"></property>
+			<property name="token"></property>
+		</union-subclass>
+		<union-subclass name="OperateLog" table="t_operatorLog">
+			<many-to-one name="senderUser" class="User" ></many-to-one>
+			<many-to-one name="receiveUser" class="User"></many-to-one>
+			<property name="operateType"></property>
+			<property name="createTime"></property>
+			<property name="entityClass"></property>
+			<many-to-one name="logId" class="TextEntityBaseDomain" cascade="save-update"></many-to-one>
+			<property name="ifChecked"></property>
+		</union-subclass>
+		<union-subclass name="TextEntityBaseDomain" abstract="true" table="t_textEntity">
+			<many-to-one name="fromUser" ></many-to-one>
+			<property name="createTime"></property>
+			<property name="digestNum"></property>
+			<property name="replyNum"></property>
+			<property name="viewsNum"></property>
+			<union-subclass name="Letter" table="t_letter">
+				<property name="letterTitle"></property>
+				<property name="collectNums"></property>
+				<many-to-one name="mainPost" class="Post" cascade="save-update"></many-to-one>
+				<property name="thanksNums"></property>
+				
+			</union-subclass>
+			<union-subclass name="Dynamics" table="t_dynamics">
+				<many-to-one name="mainPost" cascade="save-update"></many-to-one>
+			</union-subclass>
+			<union-subclass name="Post" table="t_post">
+				<property name="postText"></property>
+				<property name="lastPostId"></property>
+			</union-subclass>
+		</union-subclass>
+	</class>
+	
+</hibernate-mapping>
