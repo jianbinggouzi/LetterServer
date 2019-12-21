@@ -21,9 +21,9 @@ public class BaseDao<T> {
 	protected String tableName = "";
 
 	// 对应的实体的类
-	private Class<T> entityClass;
+	protected Class<T> entityClass;
 
-	private HibernateTemplate hibernateTemplate;
+	protected HibernateTemplate hibernateTemplate;
 
 	@Autowired
 	public void setHibernateTemplate(HibernateTemplate hibernateTemplate) {
@@ -157,7 +157,7 @@ public class BaseDao<T> {
 	}
 
 	/**
-	 * 根据指定的key-value进行分页查询，用于大量查询，可以指定排序
+	 * 根据指定的key-value进行分页查询，其中key-value之间使用and连接 用于大量查询，可以指定排序
 	 * 
 	 * @param key_value
 	 *            条件-值
@@ -170,7 +170,7 @@ public class BaseDao<T> {
 	 * @param pageSize
 	 * @return
 	 */
-	public List<T> queryByMapWithOrder(Map<String, String> key_value, String orderKey, String order, int pageNo,
+	public List<T> queryByMapAndWithOrder(Map<String, String> key_value, String orderKey, String order, int pageNo,
 			int pageSize) {
 		// 参数的List 用于生成SQLPreparementStatement
 		List<Object> args = new ArrayList<Object>();
@@ -182,6 +182,78 @@ public class BaseDao<T> {
 			for (Map.Entry<String, String> entry : key_value.entrySet()) {
 				sql.append(" ").append(entry.getKey()).append("=").append("?");
 				sql.append(" and");
+				args.add(entry.getValue());
+			}
+
+		}
+
+		// desc or asc
+		sql.append(" ").append(orderKey).append((order.equals("asc") ? ">=" : "<="));
+		// 考虑到分页到后面的效率，用子嵌套查询有索引的方式优化
+		sql.append("(select ").append(orderKey).append(" from " + tableName);
+		// 拼接子查询的where部分
+		if (key_value != null && key_value.size() > 0) {
+			sql.append(" where");
+			int i = 0;
+			for (Map.Entry<String, String> entry : key_value.entrySet()) {
+
+				sql.append(" ").append(entry.getKey()).append("=").append("?");
+				args.add(entry.getValue());
+				sql.append((key_value.size() == ++i) ? ("") : (" and"));
+			}
+		}
+
+		sql.append(" ").append("order by ").append(orderKey).append(" ").append(order);
+		// 获取到前一页的最后一个元素在数据库中的位置
+		int lastIndex = (pageNo - 1) * pageSize;
+		// 设置开始位置
+		sql.append(" ").append("limit ").append(lastIndex + "").append(",1)");
+		sql.append(" ").append("order by ").append(orderKey).append(" ").append(order).append(" limit 0,")
+				.append("" + pageSize);
+
+		final Query query = createSQLQuery(sql.toString(), args);
+		System.out.println(query.getQueryString());
+		// 符合条件的实体的主键list
+		List list = (List) getHibernateTemplate().execute(new HibernateCallback() {
+
+			@Override
+			public Object doInHibernate(Session session) throws HibernateException {
+				return query.list();
+
+			}
+
+		});
+
+		return list;
+
+	}
+
+	/**
+	 * 根据指定的key-value进行分页查询，其中key-value使用or连接 用于大量查询，可以指定排序
+	 * 
+	 * @param key_value
+	 *            条件-值
+	 * @param orderKey
+	 *            指定order by的变量名
+	 * @param order
+	 *            指定desc asc
+	 * @param pageNo
+	 *            从1开始
+	 * @param pageSize
+	 * @return
+	 */
+	public List<T> queryByMapOrWithOrder(Map<String, String> key_value, String orderKey, String order, int pageNo,
+			int pageSize) {
+		// 参数的List 用于生成SQLPreparementStatement
+		List<Object> args = new ArrayList<Object>();
+
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from " + tableName + " where");
+		// 拼接where部分
+		if (key_value != null && key_value.size() != 0) {
+			for (Map.Entry<String, String> entry : key_value.entrySet()) {
+				sql.append(" ").append(entry.getKey()).append("=").append("?");
+				sql.append(" or");
 				args.add(entry.getValue());
 			}
 

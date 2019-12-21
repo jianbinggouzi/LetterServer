@@ -9,7 +9,7 @@ import com.jianbinggouzi.Domain.Dynamics;
 import com.jianbinggouzi.Domain.EntityBaseDomain;
 import com.jianbinggouzi.Domain.Letter;
 import com.jianbinggouzi.Domain.Post;
-import com.jianbinggouzi.Domain.TextEntityBaseDomain;
+import com.jianbinggouzi.Domain.User;
 
 public class BaseService {
 
@@ -75,16 +75,18 @@ public class BaseService {
 	/**
 	 * 根据参数返回EntityClass
 	 * 
-	 * @param textEntityBaseDomain
+	 * @param entityBaseDomain
 	 * @return
 	 */
-	public EntityClass dispatchEntityClass(TextEntityBaseDomain textEntityBaseDomain) {
-		if (textEntityBaseDomain instanceof Letter)
+	public EntityClass dispatchEntityClass(EntityBaseDomain entityBaseDomain) {
+		if (entityBaseDomain instanceof Letter)
 			return EntityClass.LETTER;
-		else if (textEntityBaseDomain instanceof Dynamics)
+		else if (entityBaseDomain instanceof Dynamics)
 			return EntityClass.DYNAMICS;
-		else if (textEntityBaseDomain instanceof Post)
+		else if (entityBaseDomain instanceof Post)
 			return EntityClass.POST;
+		else if (entityBaseDomain instanceof User)
+			return EntityClass.USER;
 		else
 			return null;
 

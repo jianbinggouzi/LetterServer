@@ -104,6 +104,40 @@ public class OperateController extends BaseController {
 	}
 
 	/**
+	 * 关注用户
+	 * 
+	 * @param token
+	 * @param userId
+	 * @return
+	 */
+	@RequestMapping("/followUser")
+	@ResponseBody
+	public HashMap<String, String> followUser(String token, String userId) {
+		HashMap<String, String> map = new HashMap<>();
+		map.put("result", this.operateService.followUser(getUser(token), userId));
+		return map;
+	}
+
+	/**
+	 * 取消关注用户
+	 * 
+	 * @param token
+	 * @param userId
+	 */
+	public HashMap<String, String> unfollowUser(String token, String userId) {
+		HashMap<String, String> map = new HashMap<>();
+		try {
+			this.operateService.unFollow(getUser(token), userId);
+			map.put("result", "success");
+		} catch (Exception e) {
+			map.put("result", "failed");
+		} finally {
+			return map;
+		}
+
+	}
+
+	/**
 	 * 点赞
 	 * 
 	 * @param user

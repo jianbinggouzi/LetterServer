@@ -2,11 +2,18 @@
 <!DOCTYPE hibernate-mapping PUBLIC 
     "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
     "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+    
+<!-- 考虑java的多态性可以配合反射使用，维护和增加新功能简单。。。。。。好吧，因为我懒 -->
 <hibernate-mapping package="com.jianbinggouzi.Domain">
 	<class name="EntityBaseDomain" table="t_entity" abstract="true">
 		<id name="entityId">
 			<generator class="uuid.hex"/>
 		</id>
+		<union-subclass name="FollowRelation" table="t_followRelation">
+			<many-to-one name="user" class="User"></many-to-one>
+			<property name="entityClass"></property>
+			<many-to-one name="entityBaseDomain" class="EntityBaseDomain"></many-to-one>
+		</union-subclass>
 		<union-subclass name="User" table="t_user">
 			<property name="userName"></property>
 			<property name="passWord"></property>
@@ -49,6 +56,8 @@
 			<union-subclass name="Post" table="t_post">
 				<property name="postText"></property>
 				<property name="lastPostId"></property>
+				<property name="letterOrDynamicsId"></property>
+				<property name="letterOrDynamics"></property>
 			</union-subclass>
 		</union-subclass>
 	</class>

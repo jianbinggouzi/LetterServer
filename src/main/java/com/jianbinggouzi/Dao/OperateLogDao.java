@@ -34,7 +34,7 @@ public class OperateLogDao extends BaseDao<OperateLog> {
 	public List<OperateLog> getAllSendoutByUser(User user, int pageNo, int pageSize) {
 		HashMap<String, String> hashMap = new HashMap<>();
 		hashMap.put("senderUser", user.getEntityId());
-		List<OperateLog> list = queryByMapWithOrder(hashMap, "createTime", "desc", pageNo, pageSize);
+		List<OperateLog> list = queryByMapAndWithOrder(hashMap, "createTime", "desc", pageNo, pageSize);
 		return list;
 	}
 
@@ -49,7 +49,7 @@ public class OperateLogDao extends BaseDao<OperateLog> {
 	public List<OperateLog> getAllReceiveByUser(User user, int pageNo, int pageSize) {
 		HashMap<String, String> hashMap = new HashMap<>();
 		hashMap.put("receiveUser", user.getEntityId());
-		List<OperateLog> list = queryByMapWithOrder(hashMap, "createTime", "desc", pageNo, pageSize);
+		List<OperateLog> list = queryByMapAndWithOrder(hashMap, "createTime", "desc", pageNo, pageSize);
 		return list;
 	}
 
@@ -180,7 +180,7 @@ public class OperateLogDao extends BaseDao<OperateLog> {
 	}
 
 	/**
-	 * 添加评论记录 评论时保存的目标id为评论本身的id
+	 * 添加评论记录 评论时保存的目标id为评论本身
 	 * 
 	 * @param fromUser
 	 * @param toUser

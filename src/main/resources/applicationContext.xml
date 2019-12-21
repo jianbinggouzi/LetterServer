@@ -7,8 +7,9 @@
     ">
     <import resource="classpath:/appcontext-dao.xml"/>
     <import resource="classpath:/appcontext-service.xml"/>
-     <import resource="classpath:/appcontext-aop.xml"/>
+     
     <!--  
+    <import resource="classpath:/appcontext-aop.xml"/>
     <bean class="com.jianbinggouzi.Exception.CustomExceptionResolver"/>
     -->
 </beans>

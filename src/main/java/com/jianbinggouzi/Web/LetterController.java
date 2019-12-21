@@ -102,4 +102,30 @@ public class LetterController extends BaseController {
 		return list;
 	}
 
+	/**
+	 * 分页获取所有关注者的Letter
+	 * 
+	 * @param token
+	 * @param pageNo
+	 * @param pageSize
+	 * @return
+	 */
+	@RequestMapping("/allLetterOfFollower")
+	@ResponseBody
+	public List<Letter> getAllLetterFromFllowers(String token, Integer pageNo, Integer pageSize) {
+		return this.textEntityService.getTextEntityFromFollowers(getUser(token), "letter", pageNo, pageSize);
+	}
+
+	/**
+	 * 根据id获取Letter实例
+	 * 
+	 * @param entityId
+	 * @return
+	 */
+	@RequestMapping("/getLetter")
+	@ResponseBody
+	public Letter getLetter(String entityId) {
+		return (Letter) this.textEntityService.getTextEntityById(entityId, "letter");
+	}
+
 }

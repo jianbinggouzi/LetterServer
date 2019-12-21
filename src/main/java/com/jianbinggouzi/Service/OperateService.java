@@ -1,17 +1,17 @@
 package com.jianbinggouzi.Service;
 
-import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.jianbinggouzi.Config.OperateType;
-import com.jianbinggouzi.Dao.BaseDao;
 import com.jianbinggouzi.Dao.DynamicsDao;
+import com.jianbinggouzi.Dao.FollowRelationDao;
 import com.jianbinggouzi.Dao.LetterDao;
 import com.jianbinggouzi.Dao.OperateLogDao;
 import com.jianbinggouzi.Dao.PostDao;
+import com.jianbinggouzi.Dao.TextEntityDao;
 import com.jianbinggouzi.Dao.UserDao;
 import com.jianbinggouzi.Domain.Letter;
 import com.jianbinggouzi.Domain.OperateLog;
@@ -31,6 +31,8 @@ public class OperateService extends BaseService {
 	private DynamicsDao dynamicsDao;
 
 	private PostDao postDao;
+
+	private FollowRelationDao followRelationDao;
 
 	@Autowired
 	public void setUserDao(UserDao userDao) {
@@ -55,6 +57,35 @@ public class OperateService extends BaseService {
 	@Autowired
 	public void setPostDao(PostDao postDao) {
 		this.postDao = postDao;
+	}
+
+	@Autowired
+	public void setFollowRelationDao(FollowRelationDao followRelationDao) {
+		this.followRelationDao = followRelationDao;
+	}
+
+	/**
+	 * 关注用户
+	 * 
+	 * @param fromUser
+	 * @param toUserId
+	 * @return
+	 */
+	public String followUser(User fromUser, String toUserId) {
+		User toUser = this.userDao.get(toUserId);
+		if (fromUser.getEntityId().equals(toUserId))
+			return null;
+		return this.followRelationDao.followEntity(fromUser, dispatchEntityClass(toUser), toUser);
+	}
+
+	/**
+	 * 取消关注
+	 * 
+	 * @param fromUser
+	 * @param entityId
+	 */
+	public void unFollow(User fromUser, String entityId) {
+		followRelationDao.unFollowEntity(fromUser, entityId);
 	}
 
 	/**
@@ -143,12 +174,11 @@ public class OperateService extends BaseService {
 	public String digestToTextEntity(User user, String type, String entityId) {
 
 		// 点赞数加一
-		BaseDao textEntityDao = dispatchDaoByClassName(type);
-		TextEntityBaseDomain textDomain = (TextEntityBaseDomain) textEntityDao.get(entityId);
-		textDomain.setDigestNum(textDomain.getDigestNum() + 1);
-		textEntityDao.update(textDomain);
+		TextEntityDao textEntityDao = dispatchDaoByClassName(type);
+		textEntityDao.incDigestNum(entityId);
 
 		// 添加记录
+		TextEntityBaseDomain textDomain = (TextEntityBaseDomain) textEntityDao.get(entityId);
 		return operateLogDao.addDigestLog(user, textDomain);
 	}
 
@@ -164,11 +194,10 @@ public class OperateService extends BaseService {
 	 */
 	public String cancelDigestToTextEntity(User user, String type, String digestedId) throws Exception {
 
-		BaseDao textEntityDao = dispatchDaoByClassName(type);
-		TextEntityBaseDomain textDomain = (TextEntityBaseDomain) textEntityDao.get(digestedId);
-		textDomain.setDigestNum(textDomain.getDigestNum() - 1);
-		textEntityDao.update(textDomain);
+		TextEntityDao textEntityDao = dispatchDaoByClassName(type);
+		textEntityDao.decDigestNum(digestedId);
 
+		TextEntityBaseDomain textDomain = (TextEntityBaseDomain) textEntityDao.get(digestedId);
 		return operateLogDao.deleteOperateLog(user, textDomain, OperateType.DIGEST);
 
 	}
@@ -186,19 +215,16 @@ public class OperateService extends BaseService {
 	 */
 	public String commentToTextEntity(User user, String type, String text, String commentedId) {
 		// 回复数加一
-		BaseDao textEntityDao = dispatchDaoByClassName(type);
-		if (textEntityDao == null)
-			System.out.print("error");
-		TextEntityBaseDomain textDomain = (TextEntityBaseDomain) textEntityDao.get(commentedId);
-		textDomain.setReplyNum(textDomain.getReplyNum() + 1);
-		textEntityDao.update(textDomain);
+		TextEntityDao textEntityDao = dispatchDaoByClassName(type);
+		textEntityDao.incReplayNum(commentedId);
 
-		// 保存内容
-		Post mainPost = new Post(user, new Date(), 0, 0, 0, text, commentedId);
-		postDao.save(mainPost);
+		// 添加评论
+		TextEntityBaseDomain textDomain = (TextEntityBaseDomain) textEntityDao.get(commentedId);
+		String postKey = postDao.addPostOfEntity(user, text, textDomain);
 
 		// 添加记录
-		return operateLogDao.addCommentLog(user, textDomain.getFromUser(), mainPost);
+		Post post = (Post) postDao.get(postKey);
+		return operateLogDao.addCommentLog(user, textDomain.getFromUser(), post);
 	}
 
 	/**
@@ -212,15 +238,12 @@ public class OperateService extends BaseService {
 	 */
 	public String deleteComment(User user, String type, String commentId) throws Exception {
 
-		Post post = postDao.get(commentId);
-
 		// 被回复的实体回复数减一
-		BaseDao textEntityDao = dispatchDaoByClassName(type);
-		TextEntityBaseDomain textDomain = (TextEntityBaseDomain) textEntityDao.get(post.getLastPostId());
-		textDomain.setReplyNum(textDomain.getReplyNum() - 1);
-		textEntityDao.update(textDomain);
+		TextEntityDao textEntityDao = dispatchDaoByClassName(type);
+		textEntityDao.decReplayNum(commentId);
 
 		// 删除评论实体
+		Post post = postDao.get(commentId);
 		postDao.delete(post);
 		// 删除记录
 		return operateLogDao.deleteOperateLog(user, post, OperateType.COMMENT);
@@ -235,11 +258,10 @@ public class OperateService extends BaseService {
 	 */
 	public String thanksToLetter(User user, String letterId) {
 		// 感谢数加一
-		Letter letter = letterDao.get(letterId);
-		letter.setThanksNums(letter.getThanksNums() + 1);
-		letterDao.update(letter);
+		letterDao.incThanksNum(letterId);
 
 		// 保存记录
+		Letter letter = letterDao.get(letterId);
 		return operateLogDao.addThankLog(user, letter.getFromUser(), letter);
 	}
 
@@ -253,10 +275,9 @@ public class OperateService extends BaseService {
 	public String cancelThanksToLetter(User user, String letterId) throws Exception {
 
 		// 更新Letter实体
-		Letter letter = letterDao.get(letterId);
-		letter.setThanksNums(letter.getThanksNums() - 1);
-		letterDao.update(letter);
+		letterDao.decThanksNum(letterId);
 
+		Letter letter = letterDao.get(letterId);
 		return operateLogDao.deleteOperateLog(user, letter, OperateType.THANKS);
 
 	}
@@ -269,10 +290,11 @@ public class OperateService extends BaseService {
 	 * @return 记录的id
 	 */
 	public String colletctToLetter(User user, String letterId) {
-		Letter letter = letterDao.get(letterId);
-		letter.setCollectNums(letter.getCollectNums() + 1);
-		letterDao.update(letter);
+
+		letterDao.incCollectNum(letterId);
+
 		// 保存记录
+		Letter letter = letterDao.get(letterId);
 		return operateLogDao.addCollectLog(user, user, letter);
 	}
 
@@ -284,11 +306,10 @@ public class OperateService extends BaseService {
 	 */
 	public String cancelCollectToLetter(User user, String letterId) {
 
+		letterDao.deccCollectNum(letterId);
+
 		// 更新Letter实体
 		Letter letter = letterDao.get(letterId);
-		letter.setCollectNums(letter.getCollectNums() - 1);
-		letterDao.update(letter);
-
 		return operateLogDao.deleteOperateLog(user, letter, OperateType.COLLECTS);
 	}
 

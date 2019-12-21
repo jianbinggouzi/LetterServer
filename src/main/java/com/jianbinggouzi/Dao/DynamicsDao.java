@@ -5,6 +5,6 @@ import org.springframework.stereotype.Repository;
 import com.jianbinggouzi.Domain.Dynamics;
 
 @Repository
-public class DynamicsDao extends BaseDao<Dynamics> {
+public class DynamicsDao extends TextEntityDao<Dynamics> {
 
 }

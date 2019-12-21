@@ -1,20 +1,23 @@
 package com.jianbinggouzi.Service;
 
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.jianbinggouzi.Config.EntityClass;
 import com.jianbinggouzi.Dao.BaseDao;
 import com.jianbinggouzi.Dao.DynamicsDao;
+import com.jianbinggouzi.Dao.FollowRelationDao;
 import com.jianbinggouzi.Dao.LetterDao;
 import com.jianbinggouzi.Dao.OperateLogDao;
 import com.jianbinggouzi.Dao.PostDao;
+import com.jianbinggouzi.Dao.TextEntityDao;
 import com.jianbinggouzi.Dao.UserDao;
 import com.jianbinggouzi.Domain.Dynamics;
+import com.jianbinggouzi.Domain.FollowRelation;
 import com.jianbinggouzi.Domain.Letter;
 import com.jianbinggouzi.Domain.Post;
 import com.jianbinggouzi.Domain.TextEntityBaseDomain;
@@ -33,6 +36,8 @@ public class TextEntityService extends BaseService {
 	private UserDao userDao;
 
 	private OperateLogDao operateLogDao;
+
+	private FollowRelationDao followRelationDao;
 
 	@Autowired
 	public void setLetterDao(LetterDao letterDao) {
@@ -59,6 +64,23 @@ public class TextEntityService extends BaseService {
 		this.operateLogDao = operateLogDao;
 	}
 
+	@Autowired
+	public void setFollowRelation(FollowRelationDao followRelationDao) {
+		this.followRelationDao = followRelationDao;
+	}
+
+	/**
+	 * 根据id获取Letter/Dynamics/Post
+	 * 
+	 * @param id
+	 * @param type
+	 * @return
+	 */
+	public TextEntityBaseDomain getTextEntityById(String id, String type) {
+		TextEntityDao textEntityDao = this.dispatchDaoByClassName(type);
+		return (TextEntityBaseDomain) textEntityDao.get(id);
+	}
+
 	/**
 	 * 添加Letter/Dynamics实例 用于用户发表动态 信件，并且增加积分
 	 * 
@@ -75,9 +97,10 @@ public class TextEntityService extends BaseService {
 		userDao.update(fromUser);
 
 		// 实例化对象 如果是Letter，还需要设置题目
+		// 结构不一致。。。。。不得不把Dao层放在这里
 		Date createTime = new Date();
 		TextEntityBaseDomain domain;
-		Post mainPost = new Post(fromUser, createTime, 0, 0, 0, postText, null);
+		Post mainPost = new Post(fromUser, createTime, 0, 0, 0, postText, null, null, null);
 
 		if (letterTitle != null) {
 			domain = new Letter(fromUser, createTime, 0, 0, 0, letterTitle, 0, mainPost, 0);
@@ -107,6 +130,7 @@ public class TextEntityService extends BaseService {
 			throws ExceptionWithMessage {
 
 		// 获取实例 如果是Letter，还需要更新题目
+		// 结构不一致。。。。。不得不把Dao层放在这里
 		TextEntityBaseDomain domain;
 		Post mainPost;
 		if (letterTitle != null) {
@@ -159,15 +183,10 @@ public class TextEntityService extends BaseService {
 	 */
 	public List<TextEntityBaseDomain> getAllTextFromUserByTime(User user, String type, int pageNo, int pageSize)
 			throws ExceptionWithMessage {
-		type = type.toLowerCase();
-		BaseDao textEntityDao = dispatchDaoByClassName(type);
 
-		Map<String, String> args = new HashMap<String, String>();
-		args.put("fromUser", user.getEntityId());
+		TextEntityDao textEntityDao = dispatchDaoByClassName(type.toLowerCase());
 
-		List<TextEntityBaseDomain> textDomainList = textEntityDao.queryByMapWithOrder(args, "createTime", "desc",
-				pageNo, pageSize);
-		return textDomainList;
+		return textEntityDao.getAllTextFromUserOrderByTime(user, pageNo, pageSize);
 	}
 
 	/**
@@ -183,16 +202,35 @@ public class TextEntityService extends BaseService {
 	 */
 	public List<TextEntityBaseDomain> getAllLetterOrDynamics(String type, int pageNo, int pageSize)
 			throws ExceptionWithMessage {
-		type = type.toLowerCase();
-		if (type.equals("post"))
+
+		if (type.toLowerCase().equals("post"))
 			return null;
 
-		BaseDao textEntityDao = dispatchDaoByClassName(type);
+		TextEntityDao textEntityDao = dispatchDaoByClassName(type);
 
-		List<TextEntityBaseDomain> list = textEntityDao.queryByMapWithOrder(null, "createTime", "desc", pageNo,
-				pageSize);
+		return textEntityDao.getAllTextOrderByTime(pageNo, pageSize);
+	}
 
-		return list;
+	/**
+	 * 获取用户关注的所有用户的信件 按时间排序
+	 * 
+	 * @param user
+	 * @param pageNo
+	 * @param pageSize
+	 * @return
+	 */
+	public List<Letter> getTextEntityFromFollowers(User user, String type, int pageNo, int pageSize) {
+		List<FollowRelation> followRelationList = followRelationDao.getAllFollow(user);
+
+		List<User> userList = new ArrayList<>();
+		for (FollowRelation followRelation : followRelationList) {
+			if (followRelation.getEntityClass() == EntityClass.USER) {
+				userList.add(userDao.get(followRelation.getEntityBaseDomain().getEntityId()));
+			}
+		}
+
+		TextEntityDao textEntityDao = dispatchDaoByClassName(type.toLowerCase());
+		return textEntityDao.getTextEntityFromFollowers(userList, pageNo, pageSize);
 	}
 
 }
